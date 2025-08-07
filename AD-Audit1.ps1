@@ -1,3 +1,4 @@
+#CAI
 # Active Directory Security Audit Script
 # Requires: Active Directory PowerShell Module and appropriate permissions
 
