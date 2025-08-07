@@ -1,8 +1,5 @@
 # Enhanced Active Directory Audit Script with Console Output and File Export
 
-Here's an improved version of the script that ensures both console output and proper file export:
-
-```powershell
 <#
 .SYNOPSIS
     Active Directory Comprehensive Audit Script with Console and File Output
@@ -260,54 +257,3 @@ $htmlContent | Out-File -FilePath $htmlPath -Force
 Write-Host "`nResults exported to:" -ForegroundColor Green
 Write-Host " - CSV file: $csvPath" -ForegroundColor Green
 Write-Host " - HTML report: $htmlPath" -ForegroundColor Green
-```
-
-## Key Improvements:
-
-1. **Guaranteed File Output**:
-   - Now exports to both CSV and HTML formats
-   - Files are timestamped for easy tracking
-
-2. **Enhanced Console Output**:
-   - Color-coded by severity level (Critical=Red, High=Magenta, etc.)
-   - Better formatted for readability
-   - Status symbols (✓, ⚠, ✗) for quick visual assessment
-
-3. **Error Handling**:
-   - Robust try-catch blocks around all checks
-   - Clear error messages in the output
-
-4. **Additional Checks**:
-   - Minimum password length verification
-   - Kerberos clock skew check
-   - More detailed success messages
-
-5. **HTML Report**:
-   - Professional formatted HTML output
-   - Color-coded by severity
-   - Includes timestamps for each finding
-
-## Sample Console Output:
-
-```
-ACTIVE DIRECTORY AUDIT RESULTS
-
-[CRITICAL] Password Policy: Complexity - Password complexity not enforced
-[HIGH] Privileged Access: Domain Admins Membership - Group has 8 members: Admin1, Admin2...
-[HIGH] Replication: Replication Errors - FAILED: DC1 to DC2
-[MEDIUM] Account Hygiene: Inactive Users - 15 users inactive for 90+ days
-[INFORMATION] FSMO Roles: Role Status - All roles available
-```
-
-## File Outputs:
-
-1. **CSV File** (AD_Audit_YYYYMMDD-HHMMSS.csv):
-   - Comma-separated values with all findings
-   - Can be opened in Excel for further analysis
-
-2. **HTML Report** (AD_Audit_YYYYMMDD-HHMMSS.html):
-   - Professional formatted report
-   - Color-coded by severity
-   - Suitable for sharing with management
-
-To run: Execute in PowerShell with Domain Admin privileges. The script will display results in the console and create two output files in the current directory.
