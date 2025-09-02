@@ -38,6 +38,20 @@ foreach ($server in $servers) {
     }
 }
 
+# Use PowerShell to Count Logons
+$ServiceAccount = "svc_account_name"
+$Events = Get-WinEvent -FilterHashtable @{
+    LogName = 'Security';
+    ID = 4624
+} -MaxEvents 10000
+
+$UsageCount = ($Events | Where-Object {
+    $_.Properties[5].Value -eq $ServiceAccount
+}).Count
+
+Write-Output "Service account '$ServiceAccount' was used $UsageCount times."
+
+
 # Check Scheduled Tasks Using Service Accounts
 # On individual servers
 Get-ScheduledTask | 
