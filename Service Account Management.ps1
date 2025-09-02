@@ -121,11 +121,12 @@ if ($LogonEvents.Count -gt 0) {
 }
 
 
+
 # Define the service account and domain FQDN
 $ServiceAccount = "svc_sqlagent"
 $DomainFQDN = "corp.example.com"
 
-# Import AD module if not already loaded
+# Import AD module
 Import-Module ActiveDirectory
 
 # Get the AD user object from the specified domain
@@ -135,7 +136,7 @@ $User = Get-ADUser -Identity $ServiceAccount -Server $DomainFQDN -Properties Las
 $LastLogonDate = [DateTime]::FromFileTime($User.LastLogonTimestamp)
 
 Write-Host "Service Account: $ServiceAccount"
-Write-Host "Last Logon Time: $LastLogonDate"
+Write-Host "Last Logon Time (from AD): $LastLogonDate"
 
 # Get domain controllers from the specified domain
 $DomainControllers = Get-ADDomainController -Server $DomainFQDN -Filter *
@@ -149,7 +150,7 @@ foreach ($DC in $DomainControllers) {
         $Events = Get-WinEvent -ComputerName $DC.HostName -FilterHashtable @{
             LogName = 'Security';
             ID = 4624
-        } -MaxEvents 5000 | Where-Object {
+        } -MaxEvents 1000 | Where-Object {
             $_.Properties[5].Value -eq $ServiceAccount
         }
 
@@ -165,9 +166,17 @@ foreach ($DC in $DomainControllers) {
     }
 }
 
-# Display results
-$LogonEvents | Sort-Object TimeCreated -Descending | Format-Table -AutoSize
+# Find the most recent logon event
+$LastLogonEvent = $LogonEvents | Sort-Object TimeCreated -Descending | Select-Object -First 1
 
+if ($LastLogonEvent) {
+    Write-Host "`nMost Recent Logon Event:"
+    Write-Host "Server: $($LastLogonEvent.Server)"
+    Write-Host "Time: $($LastLogonEvent.TimeCreated)"
+    Write-Host "Logon Type: $($LastLogonEvent.LogonType)"
+} else {
+    Write-Warning "No logon events found for $ServiceAccount."
+}
 
 
 
