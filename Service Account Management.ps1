@@ -51,6 +51,24 @@ $UsageCount = ($Events | Where-Object {
 
 Write-Output "Service account '$ServiceAccount' was used $UsageCount times."
 
+# Let’s say you have a service account called svc_sqlagent. You want to know how many times it was used in the past week.
+$ServiceAccount = "svc_sqlagent"
+$StartDate = (Get-Date).AddDays(-7)
+
+$Events = Get-WinEvent -FilterHashtable @{
+    LogName = 'Security';
+    ID = 4624;
+    StartTime = $StartDate
+} -MaxEvents 10000
+
+$UsageCount = ($Events | Where-Object {
+    $_.Properties[5].Value -eq $ServiceAccount -and
+    $_.Properties[8].Value -eq 5
+}).Count
+
+Write-Output "Service account '$ServiceAccount' was used $UsageCount times in the past week."
+
+
 
 # Check Scheduled Tasks Using Service Accounts
 # On individual servers
