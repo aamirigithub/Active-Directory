@@ -71,8 +71,12 @@ Write-Output "Service account '$ServiceAccount' was used $UsageCount times in th
 
 
 # Service Account Usage in AD
+
 # Define the service account name
 $ServiceAccount = "svc_sqlagent"
+
+# Define your list of domain controllers manually
+$DomainControllers = @("DC01", "DC02", "DC03")  # Replace with actual hostnames or IPs
 
 # Get the AD user object
 $User = Get-ADUser -Identity $ServiceAccount -Properties LastLogonTimestamp
@@ -81,33 +85,41 @@ $User = Get-ADUser -Identity $ServiceAccount -Properties LastLogonTimestamp
 $LastLogonDate = [DateTime]::FromFileTime($User.LastLogonTimestamp)
 
 Write-Host "Service Account: $ServiceAccount"
-Write-Host "Last Logon Time: $LastLogonDate"
+Write-Host "Last Logon Time (from AD): $LastLogonDate"
+Write-Host "`nSearching domain controllers for logon events..."
 
-# Search Security Event Logs on all domain controllers
-$DomainControllers = Get-ADDomainController -Filter *
-
+# Initialize logon event collection
 $LogonEvents = @()
 
 foreach ($DC in $DomainControllers) {
-    Write-Host "Checking logs on $($DC.HostName)..."
-    $Events = Get-WinEvent -ComputerName $DC.HostName -FilterHashtable @{
-        LogName = 'Security';
-        ID = 4624
-    } -MaxEvents 5000 | Where-Object {
-        $_.Properties[5].Value -eq $ServiceAccount
-    }
-
-    foreach ($Event in $Events) {
-        $LogonEvents += [PSCustomObject]@{
-            Server      = $DC.HostName
-            TimeCreated = $Event.TimeCreated
-            LogonType   = $Event.Properties[8].Value
+    Write-Host "Checking logs on $DC..."
+    try {
+        $Events = Get-WinEvent -ComputerName $DC -FilterHashtable @{
+            LogName = 'Security';
+            ID = 4624
+        } -MaxEvents 5000 | Where-Object {
+            $_.Properties[5].Value -eq $ServiceAccount
         }
+
+        foreach ($Event in $Events) {
+            $LogonEvents += [PSCustomObject]@{
+                Server      = $DC
+                TimeCreated = $Event.TimeCreated
+                LogonType   = $Event.Properties[8].Value
+            }
+        }
+    } catch {
+        Write-Warning "Could not connect to $DC: $_"
     }
 }
 
 # Display results
-$LogonEvents | Sort-Object TimeCreated -Descending | Format-Table -AutoSize
+if ($LogonEvents.Count -gt 0) {
+    $LogonEvents | Sort-Object TimeCreated -Descending | Format-Table -AutoSize
+} else {
+    Write-Host "No logon events found for $ServiceAccount on specified domain controllers."
+}
+
 
 
 # Check Scheduled Tasks Using Service Accounts
