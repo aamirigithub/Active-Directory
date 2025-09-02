@@ -121,6 +121,55 @@ if ($LogonEvents.Count -gt 0) {
 }
 
 
+# Define the service account and domain FQDN
+$ServiceAccount = "svc_sqlagent"
+$DomainFQDN = "corp.example.com"
+
+# Import AD module if not already loaded
+Import-Module ActiveDirectory
+
+# Get the AD user object from the specified domain
+$User = Get-ADUser -Identity $ServiceAccount -Server $DomainFQDN -Properties LastLogonTimestamp
+
+# Convert LastLogonTimestamp to readable format
+$LastLogonDate = [DateTime]::FromFileTime($User.LastLogonTimestamp)
+
+Write-Host "Service Account: $ServiceAccount"
+Write-Host "Last Logon Time: $LastLogonDate"
+
+# Get domain controllers from the specified domain
+$DomainControllers = Get-ADDomainController -Server $DomainFQDN -Filter *
+
+$LogonEvents = @()
+
+foreach ($DC in $DomainControllers) {
+    Write-Host "Checking logs on $($DC.HostName)..."
+
+    try {
+        $Events = Get-WinEvent -ComputerName $DC.HostName -FilterHashtable @{
+            LogName = 'Security';
+            ID = 4624
+        } -MaxEvents 5000 | Where-Object {
+            $_.Properties[5].Value -eq $ServiceAccount
+        }
+
+        foreach ($Event in $Events) {
+            $LogonEvents += [PSCustomObject]@{
+                Server      = $DC.HostName
+                TimeCreated = $Event.TimeCreated
+                LogonType   = $Event.Properties[8].Value
+            }
+        }
+    } catch {
+        Write-Warning "Could not connect to $($DC.HostName): $_"
+    }
+}
+
+# Display results
+$LogonEvents | Sort-Object TimeCreated -Descending | Format-Table -AutoSize
+
+
+
 
 # Check Scheduled Tasks Using Service Accounts
 # On individual servers
