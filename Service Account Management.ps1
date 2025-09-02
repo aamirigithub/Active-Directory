@@ -70,6 +70,45 @@ $UsageCount = ($Events | Where-Object {
 Write-Output "Service account '$ServiceAccount' was used $UsageCount times in the past $pastDays days"
 
 
+# Service Account Usage in AD
+# Define the service account name
+$ServiceAccount = "svc_sqlagent"
+
+# Get the AD user object
+$User = Get-ADUser -Identity $ServiceAccount -Properties LastLogonTimestamp
+
+# Convert LastLogonTimestamp to readable format
+$LastLogonDate = [DateTime]::FromFileTime($User.LastLogonTimestamp)
+
+Write-Host "Service Account: $ServiceAccount"
+Write-Host "Last Logon Time: $LastLogonDate"
+
+# Search Security Event Logs on all domain controllers
+$DomainControllers = Get-ADDomainController -Filter *
+
+$LogonEvents = @()
+
+foreach ($DC in $DomainControllers) {
+    Write-Host "Checking logs on $($DC.HostName)..."
+    $Events = Get-WinEvent -ComputerName $DC.HostName -FilterHashtable @{
+        LogName = 'Security';
+        ID = 4624
+    } -MaxEvents 5000 | Where-Object {
+        $_.Properties[5].Value -eq $ServiceAccount
+    }
+
+    foreach ($Event in $Events) {
+        $LogonEvents += [PSCustomObject]@{
+            Server      = $DC.HostName
+            TimeCreated = $Event.TimeCreated
+            LogonType   = $Event.Properties[8].Value
+        }
+    }
+}
+
+# Display results
+$LogonEvents | Sort-Object TimeCreated -Descending | Format-Table -AutoSize
+
 
 # Check Scheduled Tasks Using Service Accounts
 # On individual servers
